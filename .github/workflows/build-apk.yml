@@ -1,0 +1,89 @@
+name: Build EV Diagnostic Release APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─── 1. Checkout ───────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ─── 2. Java 17 ────────────────────────────────────────────
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # ─── 3. Download gradle-wrapper.jar ────────────────────────
+      - name: Download Gradle Wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -fsSL \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" \
+            -o gradle/wrapper/gradle-wrapper.jar
+          echo "✅ gradle-wrapper.jar: $(du -h gradle/wrapper/gradle-wrapper.jar | cut -f1)"
+
+      # ─── 4. Make gradlew executable ────────────────────────────
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      # ─── 5. Cache Gradle ───────────────────────────────────────
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ─── 6. Decode Keystore from Secret ────────────────────────
+      #   KEYSTORE_BASE64 = base64 ของไฟล์ .jks
+      #   วิธีสร้าง base64:  base64 -w 0 keystore.jks
+      #   แล้ว copy ผลลัพธ์ไปวางใน GitHub Secret ชื่อ KEYSTORE_BASE64
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
+          echo "✅ keystore.jks decoded: $(du -h app/keystore.jks | cut -f1)"
+
+      # ─── 7. Verify HTML asset ──────────────────────────────────
+      - name: Verify HTML asset
+        run: |
+          FILE=app/src/main/assets/index.html
+          if [ -f "$FILE" ]; then
+            echo "✅ index.html found — $(du -h $FILE | cut -f1)"
+          else
+            echo "❌ index.html NOT FOUND"
+            exit 1
+          fi
+
+      # ─── 8. Build Release APK ──────────────────────────────────
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH:       app/keystore.jks
+          KEY_STORE_PASSWORD:  ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS:           ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:        ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      # ─── 9. Show APK info ──────────────────────────────────────
+      - name: Show APK info
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          echo "✅ APK size: $(du -h $APK | cut -f1)"
+
+      # ─── 10. Upload Release APK ────────────────────────────────
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ev-diagnostic-release-${{ github.run_number }}
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 90
