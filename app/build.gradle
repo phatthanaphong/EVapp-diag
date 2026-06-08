@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.mqsquare.evdiagnosticweb'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.mqsquare.evdiagnosticweb"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            // ค่าเหล่านี้มาจาก GitHub Actions Secrets
+            storeFile     file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+            storePassword System.getenv("KEY_STORE_PASSWORD") ?: ""
+            keyAlias      System.getenv("KEY_ALIAS") ?: ""
+            keyPassword   System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // ไม่ compress HTML/JS/CSS ใน assets — สำคัญมากสำหรับไฟล์ขนาดใหญ่
+    aaptOptions {
+        noCompress 'html', 'js', 'css'
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.webkit:webkit:1.10.0'
+}
