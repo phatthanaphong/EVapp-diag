@@ -45,14 +45,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ─── 6. Decode Keystore from Secret ────────────────────────
-      #   KEYSTORE_BASE64 = base64 ของไฟล์ .jks
-      #   วิธีสร้าง base64:  base64 -w 0 keystore.jks
-      #   แล้ว copy ผลลัพธ์ไปวางใน GitHub Secret ชื่อ KEYSTORE_BASE64
+      # ─── 6. Decode Keystore ────────────────────────────────────
+      # วางไฟล์ที่ root repo (ตรงกับ rootProject.file() ใน build.gradle)
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/keystore.jks
-          echo "✅ keystore.jks decoded: $(du -h app/keystore.jks | cut -f1)"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
+          echo "✅ keystore.jks: $(du -h keystore.jks | cut -f1)"
 
       # ─── 7. Verify HTML asset ──────────────────────────────────
       - name: Verify HTML asset
@@ -68,10 +66,10 @@ jobs:
       # ─── 8. Build Release APK ──────────────────────────────────
       - name: Build Release APK
         env:
-          KEYSTORE_PATH:       app/keystore.jks
-          KEY_STORE_PASSWORD:  ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_ALIAS:           ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD:        ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PATH:      keystore.jks
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS:          ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD:       ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       # ─── 9. Show APK info ──────────────────────────────────────
