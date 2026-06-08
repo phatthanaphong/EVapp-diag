@@ -16,8 +16,8 @@ android {
 
     signingConfigs {
         release {
-            // ค่าเหล่านี้มาจาก GitHub Actions Secrets
-            storeFile     file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
+            // rootProject.file() = resolve จาก root repo เสมอ ไม่ใช่จาก app/
+            storeFile     rootProject.file(System.getenv("KEYSTORE_PATH") ?: "keystore.jks")
             storePassword System.getenv("KEY_STORE_PASSWORD") ?: ""
             keyAlias      System.getenv("KEY_ALIAS") ?: ""
             keyPassword   System.getenv("KEY_PASSWORD") ?: ""
